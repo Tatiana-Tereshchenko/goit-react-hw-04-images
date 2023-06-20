@@ -1,93 +1,80 @@
-import { Component } from 'react';
+import {useState, useEffect} from 'react';
 import { Button } from './Button/Button';
 import { Loader } from './Loader/Loader';
 import { Modal } from './Modal/Modal';
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { ApiService } from './ApiService/ApiService';
-import css from './App.module.css';
+import css from './App.module.css'
 
 
 
-export class App extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      searchQuery: '',
-      images: [],
-      isLoading: false,
-      currentPage: 1,
-      selectedImage: null,
-      totalPages: 0,
+export const App = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const fetchImages = () => {
+      setIsLoading(true);
+
+      ApiService.fetchImages(searchQuery, currentPage)
+        .then((response) => {
+          const { hits, totalHits } = response.data;
+          setImages((prevImages) => (currentPage === 1 ? hits : [...prevImages, ...hits]));
+          setTotalPages(Math.ceil(totalHits / 12));
+        })
+        .catch((error) => {
+          console.log('Error fetching images:', error);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     };
-  }
 
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.searchQuery !== this.state.searchQuery ||
-      prevState.currentPage !== this.state.currentPage
-    ) {
-      this.fetchImages();
-    }
-  }
+    fetchImages();
+  }, [searchQuery, currentPage]);
 
-  fetchImages = () => {
-    const { searchQuery, currentPage } = this.state;
-    this.setState({ isLoading: true });
+  useEffect(() => {
+    localStorage.setItem('searchQuery', searchQuery);
+    localStorage.setItem('currentPage', currentPage);
+  }, [searchQuery, currentPage]);
 
-    ApiService.fetchImages(searchQuery, currentPage)
-      .then((response) => {
-        const { hits, totalHits } = response.data;
-        this.setState((prevState) => ({
-          images: currentPage === 1 ? hits : [...prevState.images, ...hits],
-          totalPages: Math.ceil(totalHits / 12),
-        }));
-      })
-      .catch((error) => {
-        console.log('Error fetching images:', error);
-      })
-      .finally(() => {
-        this.setState({ isLoading: false });
-      });
+  const handleSubmit = (query) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+    setImages([]);
+    setTotalPages(0);
   };
 
-  handleSubmit = (query) => {
-    this.setState(
-      { searchQuery: query, currentPage: 1, images: [], totalPages: 0 },
-     
-    );
-  };
-
-  handleLoadMore = () => {
-    const { currentPage, totalPages } = this.state;
+  const handleLoadMore = () => {
     if (currentPage < totalPages) {
-      this.setState(
-        (prevState) => ({ currentPage: prevState.currentPage + 1, isLoading: true }),
-       
-      );
+      setCurrentPage((prevPage) => prevPage + 1);
+      setIsLoading(true);
     }
   };
 
-  handleImageClick = (imageUrl) => {
-    this.setState({ selectedImage: imageUrl });
+  const handleImageClick = (imageUrl) => {
+    setSelectedImage(imageUrl);
   };
 
-  handleCloseModal = () => {
-    this.setState({ selectedImage: null });
+  const handleCloseModal = () => {
+    setSelectedImage(null);
   };
 
-  render() {
-    const { images, isLoading, selectedImage, currentPage, totalPages } = this.state;
-    const showLoadMoreButton = images.length > 0 && currentPage < totalPages;
+  const showLoadMoreButton = images.length > 0 && currentPage < totalPages;
 
-    return (
-      <div className={css.container}>
-        <Searchbar onSubmit={this.handleSubmit} />
-        <ImageGallery images={images} onItemClick={this.handleImageClick} />
-        {isLoading && <Loader />}
-        {showLoadMoreButton && <Button onClick={this.handleLoadMore} />}
-        {selectedImage && <Modal imageUrl={selectedImage} onClose={this.handleCloseModal} />}
-      </div>
-    );
-  }
-}
+  return (
+    <div className={css.container}>
+      <Searchbar onSubmit={handleSubmit} />
+      <ImageGallery images={images} onItemClick={handleImageClick} />
+      {isLoading && <Loader />}
+      {showLoadMoreButton && <Button onClick={handleLoadMore} />}
+      {selectedImage && <Modal imageUrl={selectedImage} onClose={handleCloseModal} />}
+    </div>
+  );
+};

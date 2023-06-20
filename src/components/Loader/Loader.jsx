@@ -1,10 +1,8 @@
-import React, { Component } from 'react';
 import { BallTriangle } from 'react-loader-spinner';
 import PropTypes from 'prop-types'; 
 import css from './Loader.module.css';
 
-export class Loader extends Component {
-    render() {
+export const Loader = () =>  {
         return (
             <div className={css.loader_lod}>
                 <BallTriangle
@@ -20,7 +18,9 @@ export class Loader extends Component {
             </div>
         );
     }
-}
+
+
+
 Loader.propTypes = {
     height: PropTypes.number,
     width: PropTypes.number,
